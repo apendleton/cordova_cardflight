@@ -1,6 +1,7 @@
 package org.cardflight;
 
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.PluginResult;
 import org.apache.cordova.CallbackContext;
 
 import org.json.JSONArray;
@@ -55,7 +56,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void readerIsConnecting() {
                         Log.d(LOG_TAG, "Device connecting");
                         if (_this.onReaderConnectingCallback != null) {
-                            _this.onReaderConnectingCallback.success();
+                            openSuccess(_this.onReaderConnectingCallback);
                         }
                     }
 
@@ -63,7 +64,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void readerIsAttached() {
                         Log.d(LOG_TAG, "Device connected");
                         if (_this.onReaderConnectedCallback != null) {
-                            _this.onReaderConnectedCallback.success();
+                            openSuccess(_this.onReaderConnectedCallback);
                         }
                     }
 
@@ -71,7 +72,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void readerIsDisconnected() {
                         Log.d(LOG_TAG, "Device disconnected");
                         if (_this.onReaderDisconnectedCallback != null) {
-                            _this.onReaderDisconnectedCallback.success();
+                            openSuccess(_this.onReaderDisconnectedCallback);
                         }
                     }
 
@@ -95,7 +96,7 @@ public class CDVCardFlight extends CordovaPlugin {
                             response.put("ExpirationYear", card.getExpirationYear());
                             response.put("swipeId", swipeId);
                         } catch (JSONException e) {}
-                        
+
                         _this.cards.put("swipeId", card);
 
                         _this.onSwipeCallback.success(response);
@@ -163,5 +164,21 @@ public class CDVCardFlight extends CordovaPlugin {
         } else {
             return false;
         }
+    }
+
+    private static void openSuccess(CallbackContext context) {
+        PluginResult result = new PluginResult(PluginResult.Status.OK);
+        result.setKeepCallback(true);
+        context.sendPluginResult(result);
+    }
+    private static void openSuccess(CallbackContext context, JSONObject object) {
+        PluginResult result = new PluginResult(PluginResult.Status.OK, object);
+        result.setKeepCallback(true);
+        context.sendPluginResult(result);
+    }
+    private static void openError(CallbackContext context) {
+        PluginResult result = new PluginResult(PluginResult.Status.ERROR);
+        result.setKeepCallback(true);
+        context.sendPluginResult(result);
     }
 }
