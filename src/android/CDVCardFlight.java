@@ -34,7 +34,7 @@ public class CDVCardFlight extends CordovaPlugin {
 
     HashMap<String, Card> cards;
 
-    @override
+    @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("setApiTokens")) {
             String apiToken = args.getString(0);
@@ -44,17 +44,17 @@ public class CDVCardFlight extends CordovaPlugin {
                 cards = new HashMap<String, Card>();
 
                 instance = CardFlight.getInstance();
-                instance.setApiTokenAndAccountToken(API_TOKEN, ACCOUNT_TOKEN);
+                instance.setApiTokenAndAccountToken(apiToken, accountToken);
                 Log.d(LOG_TAG, String.format("API TOKEN: %s ACCOUNT TOKEN: %s\n", instance.getApiToken(), instance.getAccountToken()));
 
-                CDVCardFlight _this = this;
+                final CDVCardFlight _this = this;
                 
-                reader = new Reader(getApplicationContext(), new CardFlightDeviceHandler() {
+                reader = new Reader(this.cordova.getActivity().getApplicationContext(), new CardFlightDeviceHandler() {
 
                     @Override
                     public void readerIsConnecting() {
                         Log.d(LOG_TAG, "Device connecting");
-                        if (_this.onReaderConnectingCallback) {
+                        if (_this.onReaderConnectingCallback != null) {
                             _this.onReaderConnectingCallback.success();
                         }
                     }
@@ -62,7 +62,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     @Override
                     public void readerIsAttached() {
                         Log.d(LOG_TAG, "Device connected");
-                        if (_this.onReaderConnectedCallback) {
+                        if (_this.onReaderConnectedCallback != null) {
                             _this.onReaderConnectedCallback.success();
                         }
                     }
@@ -70,7 +70,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     @Override
                     public void readerIsDisconnected() {
                         Log.d(LOG_TAG, "Device disconnected");
-                        if (_this.onReaderDisconnectedCallback) {
+                        if (_this.onReaderDisconnectedCallback != null) {
                             _this.onReaderDisconnectedCallback.success();
                         }
                     }
@@ -84,16 +84,19 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void readerCardResponse(Card card) {
                         Log.d(LOG_TAG, "Device swipe completed");
                         JSONObject response = new JSONObject();
-                        response.put("name", card.getName());
-                        response.put("cardNumber", card.getCardNumber());
-                        response.put("CVVCode", card.getCVVCode());
-                        response.put("ExpirationMonth", card.getExpirationMonth());
-                        response.put("ExpirationYear", card.getExpirationYear());
 
                         String swipeId = UUID.randomUUID().toString();
-                        _this.cards.put("swipeId", card);
 
-                        response.put("swipeId", swipeId);
+                        try {
+                            response.put("name", card.getName());
+                            response.put("cardNumber", card.getCardNumber());
+                            response.put("CVVCode", card.getCVVCode());
+                            response.put("ExpirationMonth", card.getExpirationMonth());
+                            response.put("ExpirationYear", card.getExpirationYear());
+                            response.put("swipeId", swipeId);
+                        } catch (JSONException e) {}
+                        
+                        _this.cards.put("swipeId", card);
 
                         _this.onSwipeCallback.success(response);
 
@@ -105,7 +108,11 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void deviceSwipeFailed() {
                         Log.d(LOG_TAG, "Device swipe failed");
                         JSONObject response = new JSONObject();
-                        response.put("error", "Device swipe failed");
+
+                        try {
+                            response.put("error", "Device swipe failed");
+                        } catch (JSONException e) {}
+
                         _this.onSwipeCallback.error(response);
                         _this.onSwipeCallback = null;
                     }
@@ -114,7 +121,11 @@ public class CDVCardFlight extends CordovaPlugin {
                     public void deviceSwipeTimeout() {
                         Log.d(LOG_TAG, "Device swipe time out");
                         JSONObject response = new JSONObject();
-                        response.put("error", "Device swipe time out");
+
+                        try {
+                            response.put("error", "Device swipe time out");
+                        } catch (JSONException e) {}
+
                         _this.onSwipeCallback.error(response);
                         _this.onSwipeCallback = null;
                     }
@@ -130,11 +141,12 @@ public class CDVCardFlight extends CordovaPlugin {
                 return true;
             } else {
                 Log.d(LOG_TAG, "Error setting API token");
-                return new PluginResult(PluginResult.Status.ERROR);
+                callbackContext.error("Error setting API token");
+                return true;
             }
         } else if (action.equals("swipeCard")) {
             this.onSwipeCallback = callbackContext;
-            this.instance.beginSwipe();
+            this.reader.beginSwipe();
             return true;
         } else if (action.equals("startOnReaderAttached")) {
             this.onReaderConnectingCallback = callbackContext;
@@ -147,6 +159,7 @@ public class CDVCardFlight extends CordovaPlugin {
             return true;
         } else if (action.equals("startOnReaderConnecting")) {
             this.onReaderConnectingCallback = callbackContext;
+            return true;
         } else {
             return false;
         }

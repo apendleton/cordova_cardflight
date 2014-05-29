@@ -49,5 +49,6 @@
         </config-file>
 
         <source-file src="src/android/CDVCardFlight.java" target-dir="src/org/cardflight/cdvcardflight" />
+        <source-file src="src/android/cardflight.jar" target-dir="libs" framework="true" />
      </platform>
 </plugin>
