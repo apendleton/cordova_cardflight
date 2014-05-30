@@ -17,6 +17,7 @@ import com.getcardflight.interfaces.CardFlightPaymentHandler;
 import com.getcardflight.views.CustomView;
 
 import android.util.Log;
+import android.widget.Toast;
 
 import java.util.UUID;
 import java.util.HashMap;
@@ -31,12 +32,15 @@ public class CDVCardFlight extends CordovaPlugin {
     CallbackContext onReaderDisconnectedCallback = null;
     CallbackContext onReaderConnectingCallback = null;
     CallbackContext onReaderConnectedCallback = null;
+    CallbackContext onChargeCallback = null;
     CardFlight instance;
 
     HashMap<String, Card> cards;
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+        final CDVCardFlight _this = this;
+
         if (action.equals("setApiTokens")) {
             String apiToken = args.getString(0);
             String accountToken = args.getString(1);
@@ -47,8 +51,6 @@ public class CDVCardFlight extends CordovaPlugin {
                 instance = CardFlight.getInstance();
                 instance.setApiTokenAndAccountToken(apiToken, accountToken);
                 Log.d(LOG_TAG, String.format("API TOKEN: %s ACCOUNT TOKEN: %s\n", instance.getApiToken(), instance.getAccountToken()));
-
-                final CDVCardFlight _this = this;
                 
                 reader = new Reader(this.cordova.getActivity().getApplicationContext(), new CardFlightDeviceHandler() {
 
@@ -79,6 +81,7 @@ public class CDVCardFlight extends CordovaPlugin {
                     @Override
                     public void deviceBeginSwipe() {
                         Log.d(LOG_TAG, "Device begin swipe");
+                        Toast.makeText(_this.cordova.getActivity().getApplicationContext(), "Card reader ready", Toast.LENGTH_SHORT).show();
                     }
 
                     @Override
@@ -97,7 +100,7 @@ public class CDVCardFlight extends CordovaPlugin {
                             response.put("swipeId", swipeId);
                         } catch (JSONException e) {}
 
-                        _this.cards.put("swipeId", card);
+                        _this.cards.put(swipeId, card);
 
                         _this.onSwipeCallback.success(response);
 
@@ -137,7 +140,8 @@ public class CDVCardFlight extends CordovaPlugin {
                     }
 
                 });
-
+                
+                Toast.makeText(_this.cordova.getActivity().getApplicationContext(), "CardFlight enabled", Toast.LENGTH_SHORT).show();
                 callbackContext.success();
                 return true;
             } else {
@@ -148,6 +152,40 @@ public class CDVCardFlight extends CordovaPlugin {
         } else if (action.equals("swipeCard")) {
             this.onSwipeCallback = callbackContext;
             this.reader.beginSwipe();
+            return true;
+        } else if (action.equals("chargeCard")) {
+            String chargeSwipeId = args.getString(0);
+            Card chargeCard = cards.get(chargeSwipeId);
+
+            String currency = args.getString(1);
+            String description = args.getString(2);
+            double amount = args.getDouble(3);
+
+            HashMap chargeDetailsHash = new HashMap();
+            chargeDetailsHash.put(chargeCard.REQUEST_KEY_CURRENCY, currency);
+            chargeDetailsHash.put(chargeCard.REQUEST_KEY_DESCRIPTION, description);
+            chargeDetailsHash.put(chargeCard.REQUEST_KEY_AMOUNT, Double.valueOf(amount));
+
+            _this.onChargeCallback = callbackContext;
+
+            chargeCard.chargeCard(chargeDetailsHash, new CardFlightPaymentHandler() {
+
+                @Override
+                public void transactionSuccessful(Charge charge) {
+                    JSONObject response = new JSONObject();
+
+                    // try {
+                    //     response.put("referenceId", charge.getReferenceId());
+                    // } catch (JSONException e) {}
+
+                    _this.onChargeCallback.success(response);
+                }
+
+                @Override
+                public void transactionFailed(String error) {
+                    _this.onChargeCallback.error(error);
+                }
+            });
             return true;
         } else if (action.equals("startOnReaderAttached")) {
             this.onReaderConnectingCallback = callbackContext;

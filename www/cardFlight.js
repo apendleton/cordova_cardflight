@@ -55,6 +55,10 @@ CardFlight.prototype.beginSwipe = function(successCallback, errorCallback) {
     exec(successCallback, errorCallback, "CDVCardFlight", "swipeCard", []);
 };
 
+CardFlight.prototype.chargeCard = function(successCallback, errorCallback, options) {
+    exec(successCallback, errorCallback, "CDVCardFlight", "chargeCard", [options.swipeId, options.currency || "USD", options.description, options.amount])
+}
+
 CardFlight.prototype.startOnReaderAttached = function(successCallback, errorCallback) {
     exec(successCallback, errorCallback, "CDVCardFlight", "startOnReaderAttached", []);
 };
